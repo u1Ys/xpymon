@@ -291,8 +291,7 @@ class Monitor():
         if height is None:
             height = 0
         rec_mark = '*' if recording else ' '
-        return '{dev}{rec_mark} {width}x{height}'.format(
-            dev, rec_mark, width, height)
+        return '{}{} {}x{}'.format(dev, rec_mark, width, height)
 
     def compose_clock_string(self):
         clock, second_clock = self.time_string()
