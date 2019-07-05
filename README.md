@@ -2,6 +2,8 @@
 
 xpymon - A versatile WiFi/network/battery/CPU/video system monitor on Linux
 
+![screenshot](https://raw.githubusercontent.com/h-ohsaki/xpymon/master/screenshot/xpymon.png)
+
 # SYNOPSIS
 
 xpywm
