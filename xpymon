@@ -40,10 +40,10 @@ COLOR_AT = {
 }
 
 def usage():
-    die(f"""\
-usage: {sys.argv[0]} [-T] [file...]
+    die("""\
+usage: {} [-T] [file...]
   -T    test mode
-""")
+""".format(sys.argv[0]))
 
 def second_to_hour_minute(second):
     """Convert SECONDS to hours and minutes."""
@@ -202,7 +202,8 @@ class Monitor():
         for battery in ['BAT0']:
             dir_ = '/sys/class/power_supply/' + battery
             for key in v.keys():
-                n = extract_field_from_file(f'{dir_}/{key}', atype=int)
+                n = extract_field_from_file('{}/{}'.format(dir_, key),
+                                            atype=int)
                 if n:
                     v[key] += n
         remain_ratio = v['energy_now'] / max(v['energy_full'], 1e-10)
@@ -256,13 +257,15 @@ class Monitor():
         if not level:
             level = 0
         supp_mark = '*' if supplicant else ' '
-        return f'{iface:5}{supp_mark} {essid:8} {ap} {rate:4.1f}M {quality:5} {level:5.1f}dBm'
+        return '{:5}{} {:8} {} {:4.1f}M {:5} {:5.1f}dBm'.format(
+            iface, supp_mark, essid, ap, rate, quality, level)
 
     def compose_net_status(self, iface, addr):
         tx_rate, rx_rate = self.net_status(iface)
         tx_base, tx_unit = convert_to_si_unit(tx_rate)
         rx_base, rx_unit = convert_to_si_unit(rx_rate)
-        return f'{iface:5} {addr:15} TX{tx_base:5.2f}{tx_unit} RX{rx_base:5.2f}{rx_unit}'
+        return '{:5} {:15} TX{:5.2f}{} RX{:5.2f}{}'.format(
+            iface, addr, tx_base, tx_unit, rx_base, rx_unit)
 
     def compose_power_status(self):
         ac_online, remain_ratio, remain_secs, consumption = self.battery_status(
@@ -270,13 +273,14 @@ class Monitor():
         ac_mark = '*' if ac_online else ' '
         ratio = int(remain_ratio * 100)
         hh, mm = second_to_hour_minute(remain_secs)
-        return f'PW{ac_mark}{ratio:3d}% {hh:02d}:{mm:02d} {consumption:5.2f}W'
+        return 'PW{}{:3d}% {:02d}:{:02d} {:5.2f}W'.format(
+            ac_mark, ratio, hh, mm, consumption)
 
     def compose_cpu_status(self):
         loadavg, cpufreq = self.cpu_status()
         load = int(loadavg * 100)
         freq = cpufreq / 1000
-        return f'CPU{load:3d}% {freq:3.1f}GHz'
+        return 'CPU{:3d}% {:3.1f}GHz'.format(load, freq)
 
     def compose_video_status(self):
         dev, width, height, recording = self.video_status()
@@ -287,11 +291,12 @@ class Monitor():
         if height is None:
             height = 0
         rec_mark = '*' if recording else ' '
-        return f'{dev}{rec_mark} {width}x{height}'
+        return '{dev}{rec_mark} {width}x{height}'.format(
+            dev, rec_mark, width, height)
 
     def compose_clock_string(self):
         clock, second_clock = self.time_string()
-        return f'[{second_clock}] {clock}'
+        return '[{}] {}'.format(second_clock, clock)
 
     def status_string(self, cols=80):
         """Return a summary string describing wifi, network, power, CPU, and
