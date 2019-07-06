@@ -13,7 +13,8 @@ xpywm
 This manual page documents **xpymon**, a minimal but versatile system monitor
 on Linux.  **xpymon** is designed to work with **xpywm**, a simple but
 extensible X11 window manager written in Python
-(https://pypi.org/project/xpywm/).
+(https://pypi.org/project/xpywm/).  However, **xpymon** can be used
+independently and be combined with other window managers.
 
 **xpymon** consumes the minimum amount of the desktop; i.e., the height of the
 statsu monitor window is just eight pixels.
@@ -39,7 +40,7 @@ $ pip3 install xpymon
 
 # AVAILABILITY
 
-The latest version of **ansiterm** module is available at PyPI
+The latest version of **xpymon** is available at PyPI
 (https://pypi.org/project/xpymon/) .
 
 # SEE ALSO
