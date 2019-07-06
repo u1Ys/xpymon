@@ -140,7 +140,7 @@ class Monitor():
         patterns = [[r'^\d+: *(\w+)', 1, str], [r'inet ([0-9.]+)', 1, str]]
         iface, addr = parse_cmd_output(['/bin/ip', '-oneline', 'addr'],
                                        patterns,
-                                       ignore=r'127.0.0.1')
+                                       ignore=r'(127.0.0.1|::1/128)')
         # reset statistics when interface is changed
         if iface and iface != self.last_iface:
             self.last_iface = iface
