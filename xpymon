@@ -32,12 +32,12 @@ import x11util
 
 # definition of text colors; each pair is the remaining battery
 # percentage and the color name
-COLOR_AT = {
-    100: 'aquamarine1',
-    75: 'aquamarine2',
-    50: 'aquamarine3',
-    25: 'orange',
-}
+COLOR_TBL = (
+    (100, 'aquamarine1'),
+    (75, 'aquamarine2'),
+    (50, 'aquamarine3'),
+    (25, 'orange'),
+)
 
 def usage():
     die("""\
@@ -120,16 +120,18 @@ class Monitor():
         self.rx_bytes = 0
         self.tx_rate = None
         self.rx_rate = None
+        self.ac_online = True
+        self.remain_ratio = 0
 
-    def color(self, ac_online=True, remain_ratio=1.):
-        """Return color name according to the AC power availablility AC_ONLINE
-        and the remaining battery capacity REMAIN_RATIO."""
-        color, is_blink = COLOR_AT[100], False
-        if not ac_online:
-            for percentage in COLOR_AT:
-                if remain_ratio <= percentage / 100:
-                    color = COLOR_AT[percentage]
-            if remain_ratio <= .03:
+    def color(self):
+        """Return color name according to the AC power availablility and the
+        remaining battery capacity."""
+        color, is_blink = COLOR_TBL[0][1], False
+        if not self.ac_online:
+            for percentage, name in COLOR_TBL:
+                if self.remain_ratio <= percentage / 100:
+                    color = name
+            if self.remain_ratio <= .03:
                 is_blink = True
         return color, is_blink
 
@@ -208,6 +210,9 @@ class Monitor():
                     v[key] += n
         remain_ratio = v['energy_now'] / max(v['energy_full'], 1e-10)
         remain_seconds = v['energy_now'] * 3600 / max(v['power_now'], 1e-10)
+        # record values for later use
+        self.ac_online = ac_online
+        self.remain_ratio = remain_ratio
         return ac_online, remain_ratio, remain_seconds, v['power_now'] / 1000000
 
     def cpu_status(self):
@@ -345,7 +350,6 @@ def main_loop(disp, screen, window, width, gcs, monitor):
 
 def do_tests():
     mon = Monitor()
-    print('color', mon.color())
     iface, addr = mon.detect_iface()
     print('iface', iface, addr)
     if iface:
@@ -356,6 +360,7 @@ def do_tests():
     print(mon.video_status())
     print(mon.time_string())
     print(mon.status_string(80))
+    print('color', mon.color())
     exit()
 
 def main():
