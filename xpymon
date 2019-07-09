@@ -193,11 +193,10 @@ class Monitor():
     def battery_status(self):
         """Return the existence of AC power supply and the battery status
         (capacity and the expected remaining running time)."""
-        try:
-            ac_online = extract_field_from_file(
-                '/sys/class/power_supply/AC/online', atype=int)
-        except FileNotFoundError:
-            # assume AC power if battery status is not available
+        ac_online = extract_field_from_file(
+            '/sys/class/power_supply/AC/online', atype=int)
+        # assume AC power if battery status is not available
+        if ac_online is None:
             ac_online = True
 
         v = {'energy_full': 0, 'energy_now': 0, 'power_now': 0}
