@@ -264,7 +264,10 @@ class Monitor():
         return '{:5}{} {:8} {} {:4.1f}M {:5} {:5.1f}dBm'.format(
             iface, supp_mark, essid, ap, rate, quality, level)
 
-    def compose_net_status(self, iface, addr='--.--.--.--'):
+    def compose_net_status(self, iface, addr):
+        # IP address might be not assigned yet
+        if addr is None:
+            addr ='---.---.---.---'
         tx_rate, rx_rate = self.net_status(iface)
         tx_base, tx_unit = convert_to_si_unit(tx_rate)
         rx_base, rx_unit = convert_to_si_unit(rx_rate)
