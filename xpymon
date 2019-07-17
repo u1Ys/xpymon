@@ -39,6 +39,8 @@ COLOR_TBL = (
     (25, 'orange'),
 )
 
+UPDATE_INTERVAL = 1.
+
 def usage():
     die("""\
 usage: {} [-T] [file...]
@@ -131,7 +133,7 @@ class Monitor():
             for percentage, name in COLOR_TBL:
                 if self.remain_ratio <= percentage / 100:
                     color = name
-            if self.remain_ratio <= .03:
+            if self.remain_ratio <= .05:
                 is_blink = True
         return color, is_blink
 
@@ -267,7 +269,7 @@ class Monitor():
     def compose_net_status(self, iface, addr):
         # IP address might be not assigned yet
         if addr is None:
-            addr ='---.---.---.---'
+            addr = '---.---.---.---'
         tx_rate, rx_rate = self.net_status(iface)
         tx_base, tx_unit = convert_to_si_unit(tx_rate)
         rx_base, rx_unit = convert_to_si_unit(rx_rate)
@@ -325,17 +327,20 @@ class Monitor():
         return code == 0
 
 def main_loop(disp, screen, window, width, gcs, monitor):
-    last_status_str = None
+    """Every UPDATE_INTERVAL, redraw the content of the status monitor."""
+    last_display = time.time()
+    reverse = False
     while True:
-        time.sleep(1)
+        elapsed = time.time() - last_display
+        if elapsed < UPDATE_INTERVAL:
+            time.sleep(UPDATE_INTERVAL - elapsed)
         if monitor.should_hide():
             continue
         status_str = monitor.status_string(width / x11util.FONT_WIDTH)
-        if status_str == last_status_str:
-            continue
         col = int((width / x11util.FONT_WIDTH - len(status_str)) / 2)
         color, is_blink = monitor.color()
-        reverse = is_blink and int(time.time()) & 1
+        if is_blink:
+            reverse = not reverse
         x11util.clear(window)
         x11util.draw_str(disp,
                          screen,
@@ -348,7 +353,7 @@ def main_loop(disp, screen, window, width, gcs, monitor):
                          reverse=reverse)
         x11util.flush(disp, screen)
         window.configure(stack_mode=X.Above)
-        last_status_str = status_str
+        last_display = time.time()
 
 def do_tests():
     mon = Monitor()
