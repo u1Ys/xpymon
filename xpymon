@@ -322,40 +322,19 @@ class Monitor():
         stats.append(self.compose_clock_string())
         return ' | '.join(stats)
 
-    def should_hide(self):
+    def should_hide(self, width, height):
         """Return True if the status monitor should not be displayed because,
         for instance, a full-screen application is running."""
-        code, output = subprocess.getstatusoutput('pidof mpv')
-        return code == 0
-
-def main_loop(disp, screen, window, width, gcs, monitor):
-    """Every UPDATE_INTERVAL, redraw the content of the status monitor."""
-    last_display = time.time()
-    reverse = False
-    while True:
-        elapsed = time.time() - last_display
-        if elapsed < UPDATE_INTERVAL:
-            time.sleep(UPDATE_INTERVAL - elapsed)
-        if monitor.should_hide():
-            continue
-        status_str = monitor.status_string(width / x11util.FONT_WIDTH)
-        col = int((width / x11util.FONT_WIDTH - len(status_str)) / 2)
-        color, is_blink = monitor.color()
-        if is_blink:
-            reverse = not reverse
-        x11util.clear(window)
-        x11util.draw_str(disp,
-                         screen,
-                         window,
-                         gcs,
-                         status_str,
-                         col,
-                         0,
-                         color=color,
-                         reverse=reverse)
-        x11util.flush(disp, screen)
-        window.configure(stack_mode=X.Above)
-        last_display = time.time()
+        code, output = subprocess.getstatusoutput('xwininfo -root -tree')
+        for line in output.splitlines():
+            if not 'mpv' in line:
+                continue
+            m = re.search(r'(\d+)x(\d+)\+(\d+)\+(\d+)', line)
+            if m:
+                w, h = int(m.group(1)), int(m.group(2))
+                if w >= width * .95 and h >= height * .95:
+                    return True
+        return False
 
 def do_tests():
     mon = Monitor()
@@ -388,6 +367,36 @@ def load_rcfile():
     except:
         die("executing '{}' failed.  aborting...".format(rc_file))
         exit()
+
+def main_loop(disp, screen, window, width, gcs, monitor):
+    """Every UPDATE_INTERVAL, redraw the content of the status monitor."""
+    last_display = time.time()
+    reverse = False
+    while True:
+        elapsed = time.time() - last_display
+        if elapsed < UPDATE_INTERVAL:
+            time.sleep(UPDATE_INTERVAL - elapsed)
+        if monitor.should_hide(screen.width_in_pixels,
+                               screen.height_in_pixels):
+            continue
+        status_str = monitor.status_string(width / x11util.FONT_WIDTH)
+        col = int((width / x11util.FONT_WIDTH - len(status_str)) / 2)
+        color, is_blink = monitor.color()
+        if is_blink:
+            reverse = not reverse
+        x11util.clear(window)
+        x11util.draw_str(disp,
+                         screen,
+                         window,
+                         gcs,
+                         status_str,
+                         col,
+                         0,
+                         color=color,
+                         reverse=reverse)
+        x11util.flush(disp, screen)
+        window.configure(stack_mode=X.Above)
+        last_display = time.time()
 
 def main():
     opt = getopts('T') or usage()
