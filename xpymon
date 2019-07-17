@@ -21,6 +21,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import io
+import os
 import re
 import subprocess
 import sys
@@ -40,6 +41,7 @@ COLOR_TBL = (
 )
 
 UPDATE_INTERVAL = 1.
+BATTERY_WARN_THRESH = .05
 
 def usage():
     die("""\
@@ -133,7 +135,7 @@ class Monitor():
             for percentage, name in COLOR_TBL:
                 if self.remain_ratio <= percentage / 100:
                     color = name
-            if self.remain_ratio <= .05:
+            if self.remain_ratio <= BATTERY_WARN_THRESH:
                 is_blink = True
         return color, is_blink
 
@@ -370,11 +372,28 @@ def do_tests():
     print('color', mon.color())
     exit()
 
+def load_rcfile():
+    """Load and execute the custom RC script in the home directory
+    (~/.xpymonrc) if it exists.  The RC script is any (valid) Python script,
+    which is loaded after defining all global vaiables.  So, you can freely
+    overrwite those definitions."""
+    rc_file = '{}/.xpymonrc'.format(os.getenv('HOME'))
+    try:
+        with open(rc_file) as f:
+            code = f.read()
+    except FileNotFoundError:
+        return None
+    try:
+        exec(code)
+    except:
+        die("executing '{}' failed.  aborting...".format(rc_file))
+        exit()
+
 def main():
     opt = getopts('T') or usage()
     if opt.T:
         do_tests()
-
+    load_rcfile()
     disp = display.Display()
     font = x11util.load_font(disp)
     screen = disp.screen()
