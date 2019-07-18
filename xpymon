@@ -4,8 +4,6 @@
 # Copyright (c) 2018-2019, Hiroyuki Ohsaki.
 # All rights reserved.
 #
-# $Id: xpymon,v 1.36 2019/07/03 13:42:29 ohsaki Exp $
-#
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,6 +40,7 @@ COLOR_TBL = (
 
 UPDATE_INTERVAL = 1.
 BATTERY_WARN_THRESH = .05
+TIMEZONE_FILE = '/usr/share/zoneinfo/Europe/Brussels'
 
 def usage():
     die("""\
@@ -248,8 +247,7 @@ class Monitor():
         clock = time.strftime('%Y/%m/%d(%a) %H:%M:%S')
         patterns = [['(\d\d:\d\d:\d\d)', 1, str]]
         # FIXME: avoid hard-coding
-        matches = parse_cmd_output(
-            ['zdump', '/usr/share/zoneinfo/Europe/Brussels'], patterns)
+        matches = parse_cmd_output(['zdump', TIMEZONE_FILE], patterns)
         return clock, matches[0]
 
     def compose_wifi_status(self, iface, addr):
