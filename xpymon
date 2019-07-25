@@ -287,6 +287,8 @@ class Monitor():
 
     def compose_cpu_status(self):
         loadavg, cpufreq = self.cpu_status()
+        if cpufreq is None:
+            cpufreq = 1000
         load = int(loadavg * 100)
         freq = cpufreq / 1000
         return 'CPU{:3d}% {:3.1f}GHz'.format(load, freq)
