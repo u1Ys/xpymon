@@ -231,9 +231,9 @@ class Monitor():
         """Return the primary video output device, the width and the height of
         the display, and the status whether video recording is in
         operation."""
-        patterns = [[r'^(\w+) connected \w* *(\d+)x(\d+)', 1, str],
-                    [r'^(\w+) connected \w* (\d+)x(\d+)', 2, int],
-                    [r'^(\w+) connected \w* (\d+)x(\d+)', 3, int]]
+        patterns = [[r'^([\w-]+) connected \w* *(\d+)x(\d+)', 1, str],
+                    [r'^([\w-]+) connected \w* *(\d+)x(\d+)', 2, int],
+                    [r'^([\w-]+) connected \w* *(\d+)x(\d+)', 3, int]]
         screen, xsize, ysize = parse_cmd_output(['xrandr', '--current'],
                                                 patterns)
         # check if desktop recording is active
