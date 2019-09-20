@@ -143,9 +143,10 @@ class Monitor():
         and identify the first non-local network interface and its associated
         IP address."""
         patterns = [[r'^\d+: *(\w+)', 1, str], [r'inet ([0-9.]+)', 1, str]]
+        # exclude loopback inteface and bridges
         iface, addr = parse_cmd_output(['/bin/ip', '-oneline', 'addr'],
                                        patterns,
-                                       ignore=r'(127.0.0.1|::1/128)')
+                                       ignore=r'(127.0.0.1|::1/128|\bbr\d+\b)')
         # reset statistics when interface is changed
         if iface and iface != self.last_iface:
             self.last_iface = iface
