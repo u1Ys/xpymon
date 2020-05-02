@@ -3,7 +3,6 @@
 # A versatile WiFi/network/battery/CPU/video system monitor on Linux.
 # Copyright (c) 2018-2019, Hiroyuki Ohsaki.
 # All rights reserved.
-#
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,10 +31,9 @@ import x11util
 # definition of text colors; each pair is the remaining battery
 # percentage and the color name
 COLOR_TBL = (
-    (100, 'aquamarine1'),
-    (75, 'aquamarine2'),
-    (50, 'aquamarine3'),
-    (25, 'orange'),
+    (100, os.getenv('THEME_COLOR', 'aquamarine1')),
+    (20, 'orange'),
+    (10, 'firebrick1'),
 )
 
 UPDATE_INTERVAL = 1.
@@ -142,11 +140,11 @@ class Monitor():
         """Look for all available network interface excluding loopback device,
         and identify the first non-local network interface and its associated
         IP address."""
-        patterns = [[r'^\d+: *(\w+)', 1, str], [r'inet ([0-9.]+)', 1, str]]
-        # exclude loopback inteface and bridges
-        iface, addr = parse_cmd_output(['/bin/ip', '-oneline', 'addr'],
-                                       patterns,
-                                       ignore=r'(127.0.0.1|::1/128|\bbr\d+\b)')
+        patterns = [[r'^\d+: *(\w+)', 1, str], [r'inet ([0-9.]+)', 1, str],
+                    [r'inet6 ([0-9a-f:]+)\/\d+ scope global', 1, str]]
+        iface, *addr = parse_cmd_output(['/bin/ip', '-oneline', 'addr'],
+                                                 patterns,
+                                                 ignore=r'(127.0.0.1|::1/128)')
         # reset statistics when interface is changed
         if iface and iface != self.last_iface:
             self.last_iface = iface
@@ -232,9 +230,9 @@ class Monitor():
         """Return the primary video output device, the width and the height of
         the display, and the status whether video recording is in
         operation."""
-        patterns = [[r'^([\w-]+) connected \w* *(\d+)x(\d+)', 1, str],
-                    [r'^([\w-]+) connected \w* *(\d+)x(\d+)', 2, int],
-                    [r'^([\w-]+) connected \w* *(\d+)x(\d+)', 3, int]]
+        patterns = [[r'^(\w+) connected \w* *(\d+)x(\d+)', 1, str],
+                    [r'^(\w+) connected \w* *(\d+)x(\d+)', 2, int],
+                    [r'^(\w+) connected \w* *(\d+)x(\d+)', 3, int]]
         screen, xsize, ysize = parse_cmd_output(['xrandr', '--current'],
                                                 patterns)
         # check if desktop recording is active
@@ -242,13 +240,24 @@ class Monitor():
         recording = (code == 0)
         return screen, xsize, ysize, recording
 
+    def coretemp_status(self):
+        coretemps = []
+        output = subprocess.getoutput('ls /sys/devices/platform/coretemp.*/hwmon/hwmon*/temp*_input')
+        for f in output.split("\n"):
+            coretemps.append(extract_field_from_file(f, atype=int))
+        coretemp = sum(coretemps) / len(coretemps) / 1000
+        fanrpm = extract_field_from_file(
+            subprocess.getoutput('ls /sys/devices/platform/thinkpad_hwmon/hwmon/hwmon*/fan*_input'))
+        return coretemp, fanrpm
+
     def time_string(self):
         """Return two strings representing the local time and the time in
         another time zone."""
         clock = time.strftime('%Y/%m/%d(%a) %H:%M:%S')
         patterns = [['(\d\d:\d\d:\d\d)', 1, str]]
         # FIXME: avoid hard-coding
-        matches = parse_cmd_output(['zdump', TIMEZONE_FILE], patterns)
+        matches = parse_cmd_output(
+            ['zdump', '/usr/share/zoneinfo/Europe/Brussels'], patterns)
         return clock, matches[0]
 
     def compose_wifi_status(self, iface, addr):
@@ -264,13 +273,14 @@ class Monitor():
         if not level:
             level = 0
         supp_mark = '*' if supplicant else ' '
-        return '{:5}{} {:8} {} {:4.1f}M {:5} {:5.1f}dBm'.format(
-            iface, supp_mark, essid, ap, rate, quality, level)
+        return '{:5}{} {:8} {:4.1f}M {:5} {:5.1f}dBm'.format(
+            iface, supp_mark, essid, rate, quality, level)
 
     def compose_net_status(self, iface, addr):
         # IP address might be not assigned yet
-        if addr is None:
-            addr = '---.---.---.---'
+        if None in addr:
+            addr.remove(None)
+        addr = '/'.join(addr) if addr else '---.---.---.---'
         tx_rate, rx_rate = self.net_status(iface)
         tx_base, tx_unit = convert_to_si_unit(tx_rate)
         rx_base, rx_unit = convert_to_si_unit(rx_rate)
@@ -288,11 +298,25 @@ class Monitor():
 
     def compose_cpu_status(self):
         loadavg, cpufreq = self.cpu_status()
-        if cpufreq is None:
-            cpufreq = 1000
         load = int(loadavg * 100)
         freq = cpufreq / 1000
-        return 'CPU{:3d}% {:3.1f}GHz'.format(load, freq)
+        coretemp, fanrpm = self.coretemp_status()
+        return 'CPU{:3d}% {:3.1f}GHz {:.3}C {}rpm'.format(load, freq, coretemp, fanrpm)
+
+    def volume_string(self):
+        output = subprocess.getoutput('amixer get Master')
+        m = re.search(r'\[(\d+)%\]', output)
+        volume = int(m.group(1)) if m else ''           
+        m = re.search(r'\[(\w+)\]', output)
+        toggle = m.group(1) if m else ''
+
+        toggle =  '*' if toggle == "on" else '-'
+        mplayer = '*' if subprocess.getoutput('pidof mplayer') else '-'
+        return '{}VOL{}{:3d}%'.format(mplayer, toggle, volume)
+
+    def pwm_vscreen_string(self):
+        vscreen_num = extract_field_from_file('/tmp/wm/wm_vscreen_num')
+        return f'VSCREEN {vscreen_num}'
 
     def compose_video_status(self):
         dev, width, height, recording = self.video_status()
@@ -307,7 +331,7 @@ class Monitor():
 
     def compose_clock_string(self):
         clock, second_clock = self.time_string()
-        return '[{}] {}'.format(second_clock, clock)
+        return '{}'.format(clock)
 
     def status_string(self, cols=80):
         """Return a summary string describing wifi, network, power, CPU, and
@@ -315,27 +339,48 @@ class Monitor():
         stats = []
         iface, addr = self.detect_iface()
         if iface:
-            stats.append(self.compose_wifi_status(iface, addr))
+            stats.append(self.compose_wifi_status(iface))
             stats.append(self.compose_net_status(iface, addr))
         stats.append(self.compose_power_status())
         stats.append(self.compose_cpu_status())
-        stats.append(self.compose_video_status())
+        stats.append(self.volume_string())
+        stats.append(self.pwm_vscreen_string())
         stats.append(self.compose_clock_string())
         return ' | '.join(stats)
 
-    def should_hide(self, width, height):
+    def should_hide(self):
         """Return True if the status monitor should not be displayed because,
         for instance, a full-screen application is running."""
-        code, output = subprocess.getstatusoutput('xwininfo -root -tree')
-        for line in output.splitlines():
-            if not 'mpv' in line:
-                continue
-            m = re.search(r'(\d+)x(\d+)\+(\d+)\+(\d+)', line)
-            if m:
-                w, h = int(m.group(1)), int(m.group(2))
-                if w >= width * .95 and h >= height * .95:
-                    return True
-        return False
+        code, output = subprocess.getstatusoutput('pidof mpv')
+        return code == 0
+
+def main_loop(disp, screen, window, width, gcs, monitor):
+    last_status_str = None
+    while True:
+        time.sleep(1)
+        if monitor.should_hide():
+            continue
+        status_str = monitor.status_string(width / x11util.FONT_WIDTH)
+        if status_str == last_status_str:
+            continue
+        col = int((width / x11util.FONT_WIDTH - len(status_str)) / 2)
+        color, is_blink = monitor.color()
+        reverse = is_blink and int(time.time()) & 1
+        x11util.clear(window)
+        bgcolor = color if reverse else 'black'
+        window.fill_rectangle(gcs[bgcolor][100], 0, 0, 1920, 1080)
+        x11util.draw_str(disp,
+                         screen,
+                         window,
+                         gcs,
+                         status_str,
+                         col,
+                         0,
+                         color=color,
+                         reverse=reverse)
+        x11util.flush(disp, screen)
+        window.configure(stack_mode=X.Above)
+        last_status_str = status_str
 
 def do_tests():
     mon = Monitor()
@@ -352,58 +397,11 @@ def do_tests():
     print('color', mon.color())
     exit()
 
-def load_rcfile():
-    """Load and execute the custom RC script in the home directory
-    (~/.xpymonrc) if it exists.  The RC script is any (valid) Python script,
-    which is loaded after defining all global vaiables.  So, you can freely
-    overrwite those definitions."""
-    rc_file = '{}/.xpymonrc'.format(os.getenv('HOME'))
-    try:
-        with open(rc_file) as f:
-            code = f.read()
-    except FileNotFoundError:
-        return None
-    try:
-        exec(code)
-    except:
-        die("executing '{}' failed.  aborting...".format(rc_file))
-        exit()
-
-def main_loop(disp, screen, window, width, gcs, monitor):
-    """Every UPDATE_INTERVAL, redraw the content of the status monitor."""
-    last_display = time.time()
-    reverse = False
-    while True:
-        elapsed = time.time() - last_display
-        if elapsed < UPDATE_INTERVAL:
-            time.sleep(UPDATE_INTERVAL - elapsed)
-        if monitor.should_hide(screen.width_in_pixels,
-                               screen.height_in_pixels):
-            continue
-        status_str = monitor.status_string(width / x11util.FONT_WIDTH)
-        col = int((width / x11util.FONT_WIDTH - len(status_str)) / 2)
-        color, is_blink = monitor.color()
-        if is_blink:
-            reverse = not reverse
-        x11util.clear(window)
-        x11util.draw_str(disp,
-                         screen,
-                         window,
-                         gcs,
-                         status_str,
-                         col,
-                         0,
-                         color=color,
-                         reverse=reverse)
-        x11util.flush(disp, screen)
-        window.configure(stack_mode=X.Above)
-        last_display = time.time()
-
 def main():
     opt = getopts('T') or usage()
     if opt.T:
         do_tests()
-    load_rcfile()
+
     disp = display.Display()
     font = x11util.load_font(disp)
     screen = disp.screen()
