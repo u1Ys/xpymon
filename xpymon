@@ -152,7 +152,7 @@ class VolumeStatus(Status):
         self.exsist_mplayer = subprocess.getoutput('pidof mplayer')
 
 
-class _FaceStatus(Status):
+class _IFaceStatus(Status):
     def _update_iface_and_addr(self):
         """Look for all available network interface excluding loopback device,
         and identify the first non-local network interface and its associated
@@ -169,7 +169,7 @@ class _FaceStatus(Status):
             self.v6addr = '::'
 
 
-class NetStatus(_FaceStatus):
+class NetStatus(_IFaceStatus):
     def __init__(self):
         self.last_iface = None
         self._init_stats()
@@ -223,7 +223,7 @@ class NetStatus(_FaceStatus):
             base /= 1000
 
 
-class WirelessInterfaceStatus(_FaceStatus):
+class WirelessInterfaceStatus(_IFaceStatus):
     def __str__(self):
         return '{:5}{} {:8} {:4.1f}M {:5} {:5.1f}dBm'.format(
             self.iface, '*' if self.supplicant else ' ',
