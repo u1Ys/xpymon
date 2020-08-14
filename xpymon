@@ -33,7 +33,7 @@ class Status():
     def _extract_from_stream(self, stream,
                              column=0, atype=str,
                              patterns=[], ignore=None):
-        def extract_pattern(matches):
+        def extract_pattern(line, matches):
             for i, pattern in enumerate(patterns):
                 if matches[i]:
                     continue
@@ -51,7 +51,7 @@ class Status():
             if ignore is not None and re.search(ignore, line):
                 continue
             if patterns:
-                extract_pattern(matches)
+                extract_pattern(line, matches)
             else:
                 fields = line.split()
                 return atype(fields[column])
@@ -84,7 +84,7 @@ class CPUStatus(Status):
     def _update_cpu_status(self):
         self.loadavg = self._extract_field_from_file('/proc/loadavg', atype=float)
         matches = self._extract_field_from_file('/proc/cpuinfo',
-                                                patterns=[{'regexp': r'Mhz\s*: ([\.\d]+)', 'type': float}])
+                                                patterns=[{'regexp': r'MHz[\:\s]*([\.\d]+)', 'type': float}])
         self.cpufreq = matches[0]
 
     def _update_coretemp_status(self):
