@@ -19,7 +19,7 @@ independently and be combined with other window managers.
 **xpymon** consumes the minimum amount of the desktop; i.e., the height of the
 statsu monitor window is just eight pixels.
 
-# OPTIONS
+# ~OPTIONS~
 
 - -T
 
@@ -31,14 +31,14 @@ The implementation of **xpymon** heavily depends on the Linux kernel (/proc
 and /sys pseudo filesystems) and its standard utilities such as ip (iproute2),
 ifconfig (net-tools), and iwconfig (wireless-tools).
 
-# INSTALLATION
+# ~INSTALLATION~
 
 ```sh
 $ sudo apt install iproute2 net-tools wireless-tools 
 $ pip3 install xpymon
 ```
 
-# AVAILABILITY
+# ~AVAILABILITY~
 
 The latest version of **xpymon** is available at PyPI
 (https://pypi.org/project/xpymon/) .
