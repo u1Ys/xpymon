@@ -152,7 +152,24 @@ class VolumeStatus(Status):
         self.exsist_mplayer = subprocess.getoutput('pidof mplayer')
 
 
-class NetStatus(Status):
+class _FaceStatus(Status):
+    def _update_iface_and_addr(self):
+        """Look for all available network interface excluding loopback device,
+        and identify the first non-local network interface and its associated
+        IP address."""
+        self.iface, self.v4addr, self.v6addr = self._extract_field_from_cmd(
+            ['ip', '-oneline', 'addr'],
+            patterns=[{'regexp': r'^\d+: *(\w+)'},
+                      {'regexp': r'inet ([0-9.]+)'},
+                      {'regexp': r'inet6 ([0-9a-f:]+)\/\d+ scope global'}],
+            ignore=r'(127.0.0.1|::1/128)')
+        if not self.v4addr:
+            self.v4addr = '---.---.---.---'
+        if not self.v6addr:
+            self.v6addr = '::'
+
+
+class NetStatus(_FaceStatus):
     def __init__(self):
         self.last_iface = None
         self._init_stats()
@@ -173,21 +190,6 @@ class NetStatus(Status):
             self.last_iface = self.iface
             self._init_stats()
         self._update_stats()
-
-    def _update_iface_and_addr(self):
-        """Look for all available network interface excluding loopback device,
-        and identify the first non-local network interface and its associated
-        IP address."""
-        self.iface, self.v4addr, self.v6addr = self._extract_field_from_cmd(
-            ['ip', '-oneline', 'addr'],
-            patterns=[{'regexp': r'^\d+: *(\w+)'},
-                      {'regexp': r'inet ([0-9.]+)'},
-                      {'regexp': r'inet6 ([0-9a-f:]+)\/\d+ scope global'}],
-            ignore=r'(127.0.0.1|::1/128)')
-        if not self.v4addr:
-            self.v4addr = '---.---.---.---'
-        if not self.v6addr:
-            self.v6addr = '::'
 
     def _init_stats(self):
         self.tx_bytes = self.rx_bytes = 0
@@ -221,7 +223,7 @@ class NetStatus(Status):
             base /= 1000
 
 
-class WirelessInterfaceStatus(NetStatus):
+class WirelessInterfaceStatus(_FaceStatus):
     def __str__(self):
         return '{:5}{} {:8} {:4.1f}M {:5} {:5.1f}dBm'.format(
             self.iface, '*' if self.supplicant else ' ',
