@@ -144,11 +144,9 @@ class VolumeStatus(Status):
                                       self.volume)
 
     def update(self):
-        matches = self._extract_field_from_cmd(['amixer', 'get', 'Master'],
-                                               patterns=[{'regexp': r'\[(\d+)%\]', 'type': int},
-                                                         {'regexp': r'\[(\w+)\]'}])
-        self.volume = matches[0]
-        self.toggle = matches[1]
+        self.volume, self.toggle = self._extract_field_from_cmd(['amixer', 'get', 'Master'],
+                                                                patterns=[{'regexp': r'\[(\d+)%\]', 'type': int},
+                                                                          {'regexp': r'\[(\w+)\]'}])
         self.exsist_mplayer = subprocess.getoutput('pidof mplayer')
 
 
@@ -280,7 +278,7 @@ class Window():
 
     def _update_color(self):
         self.color, self.reverse, self.bgcolor = COLOR_TBL[0][1], False, 'black'
-        if not self.power_status.ac_online:
+        if self.power_status.ac_online:
             return
         for percentage, name in COLOR_TBL:
             if self.power_status.remain_ratio <= percentage / 100:
